@@ -1,0 +1,492 @@
+---
+title: "Web Scraping in R"
+author: "Alina Happ, Nico Konstanin Heider, Johanna Zeitler"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+---
+
+
+<style>
+body {
+text-align: justify}
+</style>
+
+
+# 1. Einleitung 
+Der Begriff Web Scraping bezeichnet im allgemein Methoden, um automatisiert Daten von Webseiten zu extrahieren. Wir unterscheiden in dieser Arbeit zwei Methoden des Web Scrapings und APIs als Methode, dies häufig umgehen zu können. Zunächst wird das Scraping von Webseiten mit sogenannten statischen Daten vorgestellt. Diese liegen meist für eine lange Zeit vor und der Zeitpunkt des Scrapings muss nicht in unmittelbarer zeitlicher Nähe zu deren Veröffentlichung stehen. Danach wird das Scraping von dynamischen Daten thematisiert, dies zeichnet sich dadurch aus, dass die Daten sich periodisch ändern und oft nicht archiviert vorliegen. Hierfür muss das Script die gewünschte Webseite in festgelegten zeitlichen Intervallen aufrufen und die gewünschten Inhalte speichern. Die letzte Methode ist die Verwendung von Programmierschnittstellen - sogenannten APIs. Durch diese kann man direkt über das Internet auf Servern bereitgestellte Daten abrufen, statt diese umständlich von Webseiten scrapen zu müssen. APIs werden von verschiedenen Unternehmen und Organisationen zur Verfügung gestellt (z.B. Wetterdiensten) um ihre Daten direkt für Programme nutzbar zu machen. Dies ist, neben Webscraping, eine weitere Methode automatisiert statische und dynamische Daten aus dem Internet zu beziehen. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 2. Wie ist eine Website aufgebaut?
+Eine Website wird zunächst mit HTML (Hypertext Markup Language) geschrieben. Hier werden der Inhalt und die Struktur des Dokuments festgelegt. Dazu zählen Überschriften, Text, Listen, Links, Bilder, Videos etc. Um eine Website zu erstellen genügt HTML theoretisch. Zur schöneren Darstellung wird jedoch meistens durch CSS (Cascading Style Sheets) ein Design hinterlegt, wodurch Farbe, Schriftart, Layout, Hintergründe oder auch Animationen festgelegt werden. Dies ist auch besonders wichtig, um Websites auf den jeweiligen Bildschirm anzupassen, um also zum Beispiel zwischen der Anzeige an PCs und Smartphones zu unterscheiden. Um Interaktivität der Website zu ermöglichen wird zusätzlich eine Scripting Language benötigt, wobei zumeist auf JavaScript zurückgegriffen wird. Damit wird ermöglicht, dass der Benutzer ein Menü öffnen und schließen kann oder dass Eingaben überprüft und passende Inhalte dazu ausgegeben werden. Durch weitere Web Applikationen (z. B. durch Python, Java etc.) kann eine Website noch mehr Dynamik erhalten und weitere Zusätze wie Einkaufskörbe und Ähnliches werden ermöglicht (Robbins 2012: 12, 13).
+Durch eine URL (Uniform Resource Locator) kann man auf die jeweilige gewünschte Website zugreifen. Auch wenn es in der URL nicht immer ersichtlich ist, handelt es sich in jedem Fall um ein HTML-Dokument. Wenn kein genaueres Element in der URL definiert wurde, wird auf ein Standard Dokument zugegriffen, welches theoretisch am Ende der URL steht - jedoch für Benutzer unsichtbar ist (Robbins 2012: 24, 25).
+
+## 2.1 HTML 
+Nachdem bereits kurz beschrieben wurde, was HTML ist und wofür es benötigt wird, soll hier ein kurzer Einblick in die Programmierung gegeben werden, um sich besser im Code zurechtzufinden. 
+Ein HTML Code besteht aus verschiedenen Elementen, die mit Tags gekennzeichnet werden. Einleitende Tags tragen \<Tagname> um ihren Namen, während das Ende eines Elments mit \</Tagname> markiert wird.
+Hier ein Beispiel:
+
+```<p> class="Notiz"> Wir lieben Web Scraping.</p>```
+
+Das Beispiel beinhaltet ein Element, welches in einem Absatz steht. Dies wird durch den p-Tag festgelegt. Der Inhalt des Elements lautet "Wir lieben Web Scraping". Weiterhin können Elemente mit Attributen versehen werden. Hier gibt es ein class-Attribut mit dem Wert "Notiz". Ein Attribut stellt eine Zusatzinformation da, die nicht zum Inhalt gehört. Diese kann verwendet werden, um später beispielsweise alle Elemente mit class-Attribut "Notiz" anzusprechen. 
+Typischerweise hat ein vollständiger HTML Code diese Form: 
+
+```{r, eval=FALSE}
+
+<!DOCTYPE html> 
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Meine Seite</title>
+  </head>
+  <body>
+    <img src="path/image.png" alt="Mein Testbild">
+  </body>
+</html>
+(Beispiel aus https://developer.mozilla.org/de/docs/Learn/Getting_started_with_the_web/HTML_basics)
+
+```
+
+Der Code beginnt mit der Spezifizierung des Dokumententyps \<!DOCTYPE html>, um dem Browser vorzugeben, welchen Regeln dieser folgen muss. Anschließend folgt ein \<html>-Tag, der den gesamten Code umschließt. Innerhalb des Codes können dann verschiedene Elemente folgen. Der head des Dokuments beinhaltet Informationen, die für den Benutzer auf der Seite unsichtbar sind. In diesem Fall wird durch \<meta charset="utf-8"> die Zeichenkodierung spezifiziert, um u. a. die korrekte Anzeige von Umlauten zu ermöglichen. Weiterhin wird dort aber auch der Text gespeichert, der in der Suchmaschine erscheint oder die Schlüsselwörter, durch die die Seite gefunden werden kann. Im Gegensatz zum head trägt der body alles für den Benutzer sichtbare. Hier ist beispielhaft ein Bild eingefügt. src (Source) beschreibt den Pfad zum Bild und alt (alternative) gibt die Möglichkeit einen Alternativtext zu verfassen, falls das Bild nicht geladen werden kann oder falls die Website von einem Programm vorgelesen wird (zum Beispiel für Sehbehinderte).
+Ein weiterer Tag der häufig verwendet wird ist ```<h1>```, was eine Hauptüberschrift kennzeichnet, sodass ```<h2>``` eine Unterüberschrift darstellt usw. Listen werden durch ```<ul>``` (unordered list) oder ```<ol>``` (ordered list) eingeleitet und beinhalten mehrere Listenelemente, die mit ```<li>-Tags``` versehen sind.
+HTML kann auch Links zu anderen Websites beinhalten. Hier ein Beispiel:
+```<a href=https://www.chefkoch.de/rezepte/>Alle Rezepte</a>```(gekürzt)
+Nach der Einleitung mit ```<a``` (Anchor) folgt das Attribut href (Hypertext Reference), wo die URL des Hyperlinks angegeben wird. Anschließend folgt der Text, der als Hyperlink fungieren soll.
+
+# 3 Scraping statischer Daten
+
+Das Paket, um in R Web Scraping zu betreiben, ist rvest. Der Programmcode dieses Pakets folgt der Tidyverse-Logik. 
+
+``` {r, message=FALSE, warning=FALSE}
+library(rvest)
+library(tidyverse)
+```
+
+https://rvest.tidyverse.org/
+
+---
+
+**Tidyverse**
+
+Das heißt, statt Funktionen um ihre Elemente herumzulegen, werden sie hintereinander geschrieben und dabei mir dem Pipe-Operator %>% getrennt. Das Ergebnis der ersten Funktion wird dann automatisch (an erster Stelle) in die Klammer der nächsten Funktion nach dem Pipe-Operator eingesetzt. Hierzu ein einfaches Beispiel:
+``` {r eval=T}
+sum(c(1,2,3))
+c(1,2,3) %>% sum()
+``` 
+
+---
+
+## 3.1 Tabellenformat
+
+Am einfachsten geht Webscraping, wenn die Daten auf der Website schon im Tabellenformat vorliegen. Als Beispiel verwende ich einen Wetterrückblick für die Stadt Ulm:
+
+![ Quelle: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203](1.jpeg)
+
+
+```{r, , message=FALSE, warning=FALSE}
+link <- "https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203"
+wetter <- read_html(link)
+```
+
+Mit der Funktion read_html() greift man auf alle nötigen Inhalte der jeweiligen Seite zu. Um einen spezifischen Inhalt abzugreifen, eigenet sich zum Beispiel html_nodes(). Um anschließend nur den Text herauszufiltern folgt zuletzt html_text(). 
+
+```{r}
+avg_temp <- wetter %>% 
+  html_nodes(".uk-text-left:nth-child(4)") %>% 
+  html_text()
+```
+
+### 3.1.1 Spalten einer Tabelle mit einem CSS Selector
+
+Im folgenden Schritt soll erfasst werden, woher der Code kommt, den man in html_nodes() schreiben muss. Mit einem Rechtsklick und der Auswahl des Punktes "Untersuchen" kann man sich mühevoll durch den Code suchen. Das ist besonders problematisch, wenn man sich nicht mit HTML und CSS auskennt. Es gibt jedoch eine sehr einfache Alternative. Im Browser Google Chrome heißt diese Erweiterung "SelectorGadget" und kann ganz einfach über folgenden Link hinzugefügt werden: https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb?hl=de
+Es handelt sich hierbei um einen sog. CSS Selector, der auch für andere Browser existiert. Wenn man die Seite, von der man scrapen möchte geöffnet hat, kann man diese Erweiterung bei Chrome über das Puzzleteil-Symbol oben rechts im Browser aktivieren. Anschließend wählt man das Element aus, was man scrapen möchte. Dieses wird dadurch grün markiert. Hier soll das Ziel sein, die durchschnittlichen Temperaturen zu scrapen.
+
+![Quelle: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203](2.jpeg)
+
+Das SelectorGadget markiert automatisch "ähnliche" Elemente gelb. Diese sind dadurch auch ausgewählt. Um nicht benötigte Elemente auszublenden, klickt man auf eines dieser Elemente und markiert es rot.
+
+![Quelle: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203](3.jpeg)
+
+SelectorGadget versteht hier sofort, dass man nur die Spalte "Mittel Temp." möchte und blendet alles andere aus. Eine gute Kontrolle, dass nichts zusätzlich ausgewählt ist, ist die Anzahl der ausgewählten Elemente, die unten rechts hinter "Clear" steht. Links daneben befindet sich der benötigte Code, der in html_nodes() eingefügt werden muss, um diese Elemente abzugreifen. 
+
+``` {r eval=T}
+avg_temp <- wetter %>% 
+  html_nodes(".uk-text-left:nth-child(4)") %>% 
+  html_text()
+head(avg_temp)
+```
+
+Auf die gleiche Art und Weise kann man die Spalten mit Datum, Niederschlag und Sonnenstunden speichern und anschließend in einem Data Frame zusammenführen.
+
+```{r eval=T}
+date <- wetter %>% 
+  html_nodes(".uk-text-left:nth-child(1)") %>% 
+  html_text()
+regen <- wetter %>% 
+  html_nodes(".uk-text-left:nth-child(5)") %>% 
+  html_text()
+sonne <- wetter %>% 
+  html_nodes(".td_beo_r:nth-child(6)") %>% 
+  html_text()
+wetter_table1 <- data.frame(date, avg_temp, regen, sonne)
+head(wetter_table1)
+```
+
+### 3.1.2 Gesamte Tabelle
+Um eine gesamte Tabelle in R zu bekommen, braucht man das SelectorGadget nicht zwangsläufig. Hier kann es auch schon genügen, auf der Tabelle mit einem Rechtsklick auf "Untersuchen" zu klicken. Dadurch landet man in der Regel schon grob an der Stelle im Programmcode, die man benötigt. Hovert man über die umliegenden Codezeilen, erkennt man, dass sich verschiedene Teile der Seite in blau markieren. Ist die gesamte Tabelle (aber sonst nichts) markiert und ist das erste Wort dieser Zeile "table", hat man den richtigen Programmcode gefunden. Über der Tabelle erscheint der Tabellenname. 
+
+![Quelle: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203](4.jpeg)
+
+In diesem Fall wird etwas zu viel Code angezeigt, denn der Tabellenname lautet nur "table#extremwerte". Das lässt sich aber auch rechts im Programmcode in der table ID erkennen. Der Tabellenname kann wieder in html_nodes() eingefügt werden. Da wir statt Text nun eine Tabelle haben, lautet das Folgestatement html_table(). Hierdurch entsteht eine Liste, wobei das erste Element die gewünschte Tabelle ist. Da bei der Spezifizierung des ersten Listenelements für Tidyverse unklar ist, an welche Stelle das Ergebnis aus der html_table()-Funktion hin transportiert werden soll, muss die Stelle mit einem Punkt markiert werden. Man sollte anschließend noch die Formate anpassen, da zunächst alles als factor behandelt wird. An dieser Stelle wird dies aber ignoriert. Um Dezimalzeichen und Klasse zu bearbeiten wird in Teil 3.2 eine Variable beispielhaft transformiert.
+
+``` {r eval=T}
+wetter_table2 <- wetter %>% 
+  html_nodes("table#extremwerte") %>% 
+  html_table() %>%  .[[1]]
+head(wetter_table2)  
+```
+
+## 3.2 Kein Tabellenformat
+Für ein weiteres Beispiel habe ich eine Seite ohne Tabellenformat ausgewählt -  nämlich eine Chefkochseite mit Suchergebnissen für Pfannkuchenrezepte. 
+```{r}
+link <- "https://www.chefkoch.de/rs/s0/pfannkuchen/Rezepte.html"
+page <- read_html(link)
+``` 
+
+Zunächst sollen die Namen, die Zubereitungsdauer und der Schwiergkeitsgrad gescraped werden. Am einfachsten erhalte ich den html_node()-Codeteil wieder mit dem SelectorGadget.
+
+![Quelle: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203](5.jpeg)
+
+``` {r eval=T}
+meal <- page %>% html_nodes(".ds-h3.ds-heading-link") %>% html_text()
+preptime_pre <- page %>% html_nodes(".recipe-preptime") %>% html_text()
+difficulty_pre <- page %>% html_nodes(".recipe-difficulty") %>% html_text()
+pancake1 <- data.frame(meal, preptime_pre, difficulty_pre)
+head(pancake1)
+```
+
+Leider werden nicht alle Variablen in perfekter Form extrahiert, sodass der Textinhalt von preptime und difficulty noch bearbeitet werden muss.
+
+```{r}
+preptime <- as.integer(substring(text = preptime_pre, first=11, last=12))
+difficulty <- substring(text= difficulty_pre, first=11, last=16)
+pancake2 <- data.frame(meal, preptime, difficulty)
+head(pancake2)
+```
+
+Auf der Übersichtsseite sind zwar schon ein paar Informationen über die Rezepte sichtbar, einige Inhalte bleiben jedoch noch verborgen und werden nur erreicht, indem das Rezept geöffnet wird. Um nicht jedes Rezept einzeln öffnen zu müssen, wird der Programmcode, der die Sublinks beinhaltet identifiziert. SelectorGadget hilft dabei. 
+
+![Quelle: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=203](6.jpeg)
+
+Leider ist es bei Links nicht immer einfach sichtbar, wie der Kasten des SelectorGadgets ausgewählt werden muss. Oft klickt man zwar auf die Überschrift, in diesem Fall kann man jedoch den gesamten Kasten anklicken, um auf die Seite des jeweiligen Rezepts weitergeleitet zu werden und so muss auch dieser gesamte Bereich ausgewählt werden, um den passenden Code zu erhalten. Teilweise hilft auch einfach ausprobieren. Ein Link wird mithilfe der Funktion html_attr("href") gescrapt.
+
+```{r eval=T}
+sublinks_pre1 <- page %>%
+  html_nodes(".bi-recipe-item") %>%
+  html_attr("href")
+
+sublinks_pre1[1]
+```
+
+Auch in diesem Fall ist zwar die URL enthalten, aber der Text muss nach ".html" abgeschnitten werden, um nur den Link zu behalten. 
+
+```{r}
+sublinks <- strsplit(sublinks_pre1, split="#") %>% unlist() %>% .[c(T,F)]
+```
+Glücklicherweise sind die Rezepte gleich aufgebaut und so auch ihr Programmcode, sodass man mit einer for-Schleife durch die Sublinks iterieren kann. Das Ziel ist es hier, die Sternebewertung und die Anzahl der Bewertungen zu scrapen. R verwechselt bei der Anzahl der Ratings das Tausendertrennzeichen mit einem Dezimalpunkt, was hier noch angepasst wird.
+
+```{r}
+rating_num <- character()
+for (i in 1:30){
+  rating_num[i] <- read_html(sublinks[i]) %>% 
+    html_nodes(".rds-only+ span") %>% 
+    html_text()
+}
+
+rating_num <- as.numeric(gsub(",", ".", gsub("\\.", "", rating_num)))
+
+stars <- character()
+for (i in 1:30){
+  stars[i] <- read_html(sublinks[i]) %>% 
+    html_nodes(".ds-rating-avg strong") %>% 
+    html_text()
+}
+
+pfannkuchen3 <- data.frame(meal, preptime, difficulty, stars, rating_num)
+head(pfannkuchen3)
+```
+
+
+# 4. Scraping dynamischer Daten 
+Neben statischen Daten, die meist mehr oder weniger strukturiert für längere Zeitspannen unverändert online zur Verfügung stehen, stellen sogenannte dynamische Daten eine interessante Quelle dar. Diese verändern sich häufig entweder in regelmäßigen (Streamingdaten) oder unregelmäßigen Abständen (diese Definition ist angelehnt an die Speicherstrukturen vieler Programmiersprachen, siehe z.B. Wirth 1998: 189). Eine besondere Schwierigkeit dieser Daten ist, dass sie meist nicht öffentliche archiviert werden und jede Veränderung somit einen unwiederbringlichen Verlust der vorherigen Informationen darstellt. Beispiele hierfür sind  Video-, Audio- und Textstreams (z.B. Chatrooms). Um diese Daten zu erfassen, werden Programme benötigt, die innerhalb einer bestimmten Zeitspanne eine Website aufrufen und die gewünschten Informationen speichern. 
+
+## 4.1 Codebeispiel 
+Im Folgenden wird anhand des Beispiels einer Ulmer Verkehrskamera gezeigt, wie ein mögliches Programm zur Aggregation solcher Daten aussehen könnte und wie mithilfe von Machine Learning Methoden aus traditionell eher schwer verarbeitbaren Bilddaten mit geringem Arbeitsaufwand tabellarisch darstellbare Erkenntnisse gewonnen werden können.   
+
+### 4.1.1 Datenaggregation
+Die Datenquelle ist eine Verkehrskamera der Stadt Ulm (https://www.ulm.de/sonderseiten/webcams). Wie häufig bei öffentlichen Webcams zeigt diese keinen konstanten Videostream, sondern ein in regelmäßigen Abständen aufgenommenes Foto der Verkehrslage (hier alle 60s). Durch untersuchen des Quellcodes der Website zeigt sich, dass dieses Foto über eine URL direkt in die Website eingebunden ist. Durch direktes Aufrufen dieser URL in R kann das Foto gespeichert werden. 
+
+```{r, message=FALSE, warning=FALSE}
+library(imager)
+library(tidyverse)
+
+url <- "http://www.verkehrsinfos.ulm.de/webcam/b10-S/current.jpg"
+
+temp <- tempfile(fileext = ".jpg") # erstellen einer temporaeren Datei, die sich bei beenden von R selbst loescht
+
+download.file(url, destfile = temp, quiet = TRUE) # herunterladen der Datei 
+
+img <- load.image(temp) # Laden des Bilder 
+
+plot(img) # Das Bild mithilfe der imager-library plotten 
+```
+
+
+Je nach gewünschter zeitlicher Auflösung kann dieser Prozess nun alle für alle sinnvollen Zeitabstände wiederholt werden. Dies kann durch eine unendliche Schleife (*while(TRUE){}*, oder *repeat{}*) und den Befehle *Sys.sleep()* gelöst werden, oder indem man das R-Script von dem Betriebssystem in festgelegten Zeiträumen ausführen lässt (Task-Scheduler in Windows, Crontab in Ubuntu). 
+Da wir über mehrere Tage Daten sammeln wollten haben wir das Script auf einen Server geladen und per Crontab alle 10 Minuten ausführen lassen. 
+Unser Script sah folgendermaßen aus: 
+
+```{r, eval=FALSE}
+setwd("/home")
+if(!dir.exists("images")){ # check ob der Zielordner existiert, wenn nicht wird er erstellt
+   dir.create("images")
+}
+url <- "http://www.verkehrsinfos.ulm.de/webcam/b10-S/current.jpg"
+# jedes Bild wird mit dem Datum und der Uhrzeit der Aufnahme benannt: 
+path <- paste("images/", gsub(" ", "_", toString(Sys.time())), ".jpg", sep = "")
+download.file(url, destfile = path)
+```
+
+### 4.1.2 Verarbeiten der Daten 
+Die gesammelten Aufnahmen müssen nun noch ausgewertet werden. Wir interessieren uns für die Anzahl an Fahrzeugen pro Foto, um zu prüfen, ob aus unserer begrenzten Stichprobe (alle 10 Minuten an einer einzelnen Straße) Verkehrsmuster erkennbar sind. Da die Anzahl an Bildern (>1500) händisches Zählen der Fahrzeuge sehr umständlich macht, entschieden wir uns, dies mithilfe von Machine Learning zu lösen.
+Hierfür verwenden wir einen YOLO (*You Only Look Once*) Object Detector (Redmon et al. 2016). Diese Art der Objekterkennung zeichnet sich dadurch aus, dass komplette Bilder in einem einzelnen neuronalen Netz verarbeitet werden, was einen Geschwindigkeitsvorteil bringt gegenüber alternativen Ansätzen, bei denen zunächst ein Bild in einzelne Teile aufgeteilt wird, um dann diese einzeln mithilfe eines neuronalen Netzes zu klassifizieren (vgl. Redmon et al. 2016: 1). Außerdem existiert eine gute R Implementierung dieser Methode in Form des *Platypus*- Packages (https://github.com/maju116/platypus). Statt die YOLO Architektur selbst zu trainieren, was Trainingsdaten mit Labels benötigen würde, können die Gewichte eines bereits trainierten Netzes heruntergeladen werden. Dies ist zwar etwas ungenauer als ein extra für unsere Nutzung trainiertes neuronales Netz, aber funktioniert laut unseren Tests dennoch gut und ist deutlich weniger arbeitsaufwendig. Die verwendeten Gewichte stammen von einem anhand des COCO Datasets trainierten Modells (https://cocodataset.org). 
+
+```{r, eval=FALSE}
+# Der folgende Code ist eine leicht abgewandelte Version des ersten Beispiels auf https://github.com/maju116/platypus.  
+
+library(platypus)
+
+# Den Klassifizierer auf unseren Fall einstellen 
+yolo <- yolo3(
+  net_h = 480, # Hoehe des Bildes 
+  net_w = 640, # Weite des Bildes
+  grayscale = FALSE, # RGB oder Grayscale
+  n_class = 80, # Anzahl moeglicher Klassen 
+  anchors = coco_anchors # Anchor boxen
+)
+
+# Die pretrained Weights aus dem Working Directory laden 
+yolo %>% load_darknet_weights("yolov3.weights")
+
+# alle Bilddateinamen in einer Liste speichern um durch diese zu iterieren 
+img_paths <- list.files(path="images", pattern="*.jpg", full.names=TRUE, recursive=FALSE)
+
+# Schleife die jeweils ein Foto einliest und Objekte erkennt 
+# (da es sich um eine Straße handelt Autos, LKWs und Busse), 
+# alle erkannten Fahrzeuge zählt und in einem Dataframe zusammen mit Zeit und Datum abspeichert.
+for(i in 1:length(img_paths)){
+  tryCatch({
+  
+# Bild in einer für keras verwendbaren Form einlesen
+  imgs <- img_paths[i] %>%
+    map(~ {
+    image_load(., target_size = c(480, 640), grayscale = FALSE) %>%
+      image_to_array() %>%
+      `/`(255)
+    }) %>%
+    abind(along = 4) %>%
+    aperm(c(4, 1:3))
+
+# Zeit und Datum aus den Dateinamen lesen
+  id <- str_replace_all(img_paths[i], "images/", "")
+  id <- str_replace_all(id, ".jpg", "")
+  img_time <- str_split_fixed(id, "_", 2)
+  
+# Object Detection anwenden 
+  preds <- yolo %>% predict(imgs)
+
+# Die Predictions in Bounding-Boxes umwandeln 
+  boxes <- get_boxes(
+    preds = preds, 
+    anchors = coco_anchors, 
+    labels = coco_labels, 
+    obj_threshold = 0.6, # Wie sicher muss sich der Klassifizierer sein damit ein Objekt eine Box bekommt 
+    nms = TRUE, # non max-supression: stellt sicher, dass pro Objekt nur eine Box generiert wird 
+    nms_threshold = 0.6 # Non-max suppression threshold
+    )
+ 
+# Die erkannten Fahrzeuge in einem Dataframe speichern 
+  vehicles <- as.data.frame(boxes)
+  vehicles$id <- id
+  vehicles$date <- img_time[1]
+  vehicles$time <- img_time[2]
+  
+# Da das Format des DF jeweils ein Fahrzeug pro Zeile ist kann man diese einfach mit nrow() zaehlen
+  vehicles$n_vehicles <- vehicles %>% 
+    nrow() 
+  
+# Unnoetige Variablen loeschen 
+  vehicles <- vehicles %>% 
+    select(-c(1:8))
+  
+# Es wird nur noch eine Zeile benoetigt  
+  new_row <- vehicles[1,]
+  
+# Falls es der erste Durchlauf der Schleife ist wird der finale Dataframe neu erzeugt, 
+# sonst wird dem bestehenden DF die Daten des jetzigen Bildes angehaengt
+  if(i == 1){
+    vehicle_count <- new_row
+  } else {
+    vehicle_count <- rbind(vehicle_count, new_row)
+  }
+  print(i)
+  
+# Die Predict-Funktion produziert einen Fehler wenn keine Objekte in einem Bild erkannt werden (in unserem Fall eigentlich nur Nachts)
+# mithilfe von tryCatch und einer entspechenden Funktion kann aber dafuer gesorgt werden, dass die Schleife nicht abbricht und die Bilddaten als fehlende Daten hinzugefuegt werden 
+  }, error=function(e){
+    print("error")
+    error_row <- new_row
+    error_row$date <- img_time[1]
+    error_row$time <- img_time[2]
+    error_row$n_vehicles <- NA
+    vehicle_count <<- rbind(vehicle_count, error_row)
+    })
+}
+```
+
+
+Beispiel eines von dem Modell gelabelten Bildes: 
+```{r}
+temp <- tempfile(fileext = ".jpg") 
+download.file("https://github.com/nheider/counting_vehicles_on_webcams/raw/main/Rplot.png", destfile = temp, quiet = TRUE) 
+img <- load.image(temp)  
+
+plot(img) 
+```
+
+Eine solche Fahrzeugzählung anhand eines *pretrained* neuronalen Netzes dauert auf dem von uns verwendeten Laptop für unsere Datenmenge etwa 2 Stunden. Die großen Vorteile, dass einem die lästige Arbeit abgenommen wird und die Zeitersparnis im Vergleich zu einer händischen Verarbeitung werden durch einige Nachteile aufgewogen. Das größte Problem ist die Genauigkeit. Das Modell zählt unter optimalen Bedingungen relativ genau und verschätzt sich meist höchstens um 1-2 Autos. Regnet es oder wird es langsam dunkel, nimmt die Genauigkeit aber erheblich ab. Außerdem hat das Modell manchmal Probleme zwischen Autos, Trucks und Bussen zu unterscheiden. Um dies zu umgehen, fassen wir alle diese Kategorien als Fahrzeuge zusammen. Dies macht die Zählung genauer, stellt aber einen Verlust von wichtigen Informationen dar. Auch das nachts keine Autos erkannt werden, obwohl dies für einen Menschen anhand des Scheinwerferlichts möglich wäre, ist ein Problem des Modells. All diese Probleme sollten durch das Trainieren eines Modells mit handgelabelten Daten von unserer oder ähnlichen Verkehrskameras minimiert werden können. 
+
+### 4.1.3 Grafische Auswertung der Daten 
+
+```{r, message=FALSE, warning=FALSE}
+library(hms)
+
+# die Ergebnisse des vorgestellten Modells laden 
+data <- read_csv("https://raw.githubusercontent.com/nheider/counting_vehicles_on_webcams/main/vehicle_count.csv")
+
+# Aufnahmen auf die nächste Minute runden 
+data$time <- round_hms(as_hms(data$time), 60)
+
+# Daten nach Zeit und Wochentag filtern, da Wochenendverkehr sich wahrscheinlich anders verhält als Verkehr Werktags
+data <- data %>% 
+  filter(time >= as_hms("05:30:00") & time <= as_hms("22:00:00")) %>% 
+  filter(!(weekdays(as.Date(date)) %in% c("Samstag", "Sonntag"))) %>% 
+  na.omit()
+
+# Mitteln der beobachteten Autos zu der jeweiligen Zeit über alle Werktage
+data <- data %>% 
+  group_by(time) %>% 
+  summarise(count = mean(n_vehicles)) %>% 
+  mutate(percent = count/sum(count))
+  
+# Plotten 
+ggplot(data, aes(x = time, y = percent*100)) +
+  geom_line() +
+  geom_smooth(span = 0.4) + # span bestimmt wie nahe die Kurve an den Punkten liegt, verwendete smoothing Methode: loess
+  xlab("Uhrzeit")  +
+  ylab("Verkehr (% des gemittelten erfassten Verkehrs)") 
+
+```
+
+Die Grafik zeigt den über die verschiedenen Aufzeichnungstage (30.06. - 22.07.21, mit Pausen) gemittelten Verkehr an Werktagen zwischen 5:30 Uhr und 22:00 Uhr. Der stark ansteigende Morgenverkehr ist darauf deutlich zu erkennen, ebenso wie das stetige Abnehmen des Verkehrs ab etwa 15:30 Uhr. Das abgebildete Verkehrsmuster scheint sich von Zählungen in anderen Städten nicht stark zu unterscheiden (vgl. Laflamme & Ossenbruggen 2017: 33).  
+
+## 4.2 Fazit 
+Webscraping erlaubt es uns Zugriff zu Daten zu haben, die sonst nur schwer zugänglich wären. Aus unserer oberflächlichen Analyse geht eindeutig hervor, dass man anhand von Verkehrskameras in Verbindung mit Machine Learning Methoden Verkehrsmuster erkennen kann. Da es deutschlandweit viele dieser öffentlich zugänglichen Kameras gibt, könnte man diese nutzen, um langfristige Verkehrstrends zu beobachten. Wie wichtig solche Mobilitätsdaten für Vorhersagen sein können, hat sich während der Coronapandemie bewiesen. Insgesamt liefert diese Methode viele spannende Ansatzmöglichkeiten für weitere Analysen. Da Website Aufrufe Kosten für die Betreibenden verursachen, sollte man möglichst darauf achten, den Zeitabstand der Aufrufe nicht zu kurz zu gestalten. 
+
+# 5. APIs als Alternative zum Webscraping
+
+Eine API (*Application Programming Interface*) wird von einer Software zur Verfügung gestellt um die Interaktion zwischen dieser und einem anderen Programm zu ermöglichen. Im Fall von über das Internet ansprechbaren APIs bedeutet dies meist, dass diese auf einem Server laufen und auf strukturierte Datenanfragen mit den entsprechenden Daten antworten. 
+Im Vergleich zu Web Scraping erlauben einem APIs eine deutlich niedrigere Fehleranfälligkeit und übersichtlicheren und einfacheren Code. Da die Daten meist bereits strukturiert von der API gesendet werden (meist im JSON-Format), können durch Verwenden von APIs viel Datenbereinigung und Transformation erspart werden. 
+Außerdem kann es vorkommen, dass bestimmte Daten nur über APIs verfügbar sind. 
+Es wird zwischen offen zugänglichen APIs und solchen, bei denen eine *Authentication* nötig ist, unterschieden. Auf die Ersteren kann man direkt ohne Registrierung oder Authentifizierung zugreifen, während man sich bei den Letzteren registrieren muss und einen Authentifizierungsschlüssel zu erhalten.
+Möchte man Daten einer offen zugänglichen API erhalten, kann man mithilfe der Pakete "jsonlite" und "httr" diese praktischerweise direkt in R importieren und in einen Dataframe umwandeln. 
+Dies wird im nachfolgenden Beispiel illustriert.
+
+## 5.1 Datenbeispiel New York Fahrradverleih
+In diesem Beispiel werden Daten des New Yorker Fahrrad-Leihsystems (http://citibikenyc.com) verwendet. Die zugehörige API gibt die jeweilig an den Ausleihstationen verfügbaren Fahrräder an. Da die API ebenfalls die Koordinaten der einzelnen Stationen zurückgibt, können wir diese direkt auf eine Karte von New York plotten und die Punkte je nach Anzahl an verfügbaren Fahrrädern einfärben.  
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(jsonlite)
+library(httr)
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(ggmap)
+
+citibike<- fromJSON("http://citibikenyc.com/stations/json") #Zugriff auf die Daten über die Adresse
+
+
+stations <- citibike[["stationBeanList"]]
+
+bbox <- make_bbox(lon = stations$longitude, lat = stations$latitude, f = 0.1) #die Bounding Box erzeugen, die möglichst alle Punkte einschliest 
+
+NY <- get_stamenmap(bbox=bbox, maptype="terrain", zoom=14) #karte downloaden
+
+ggmap(NY)+ #plotten
+  geom_point(aes(x=longitude, y=latitude, fill = availableBikes, shape=23, stroke = 0), data=stations) + scale_color_gradient() +
+  scale_shape_identity() +
+  labs(fill = "Verfügbare Fahrräder")
+
+```
+
+
+## 5.2. Datenbeispiel API Yahoo-Finance
+
+Wie im Beispiel oben gesehen, brauchen wir auch in diesem Fall keinen Authentification Key, sondern können direkt auf die Daten der API zugreifen. Auch in R selber gibt es bereits Pakete die dies ermöglichen. Dieses wird im Folgenden am Beispiel von Yahoo-Finance und dem Paket "tidyquant" gezeigt. Das Paket hilft dabei quantiative (Finanz-) Daten einzulesen und zu analysieren. In diesem Beispiel wird der niedrigste Aktienkurs der 'Biontech' Aktie über einen Zeitraum von Januar 2020 bis Juni 2021 betrachtet.
+
+```{r, , message=FALSE, warning=FALSE}
+library(tidyquant)
+```
+
+
+```{r, warning=FALSE}
+options("getSymbols.warning4.0"=FALSE) # Meldung das es eine neue Version gibt ausschalten
+
+getSymbols("ADRS", from = '2020-01-01',
+           to = "2021-06-01",warnings = FALSE,
+           auto.assign = TRUE)
+
+#Die Daten werden als 'xts'(ein Zeitreihenobjekt) eingelesen
+class(ADRS)
+
+head(ADRS)
+
+#Die Daten eines interessierenden Zeitraums werden in Form eines Dataframes als Objekt abgespeichert
+werteADRS <- tq_get('ADRS', from = "2020-01-01", to = "2021-06-01", get = "stock.prices")
+
+werteADRS %>%
+  ggplot(aes(x = date,y= low )) +
+  geom_point() + geom_line(col="red")+
+  labs(x = 'Datum',
+       y = "Niedrigster Kurswert",
+       title = "Biontech Niedrigste Aktienkurse 2020 - Juni 2021")
+```
+
+# 6. Fazit 
+Die in dieser Arbeit dargelegten Grundlagen des Webscraping sollen zeigen, dass man auch mit relativ einfachen Methoden Daten von Webseiten und APIs sammeln kann. Besonders spannend ist dies bei Daten die nicht in einer tabellarischen Form zur Verfügung gestellt werden und somit sonst nicht zugänglich wären. Weiterführende komplexere Methoden wären das Programmieren von einfachen Bots, die in der Lage sind Formulare und Suchfelder auszufüllen und somit Daten von Seiten zu scrapen, die nicht über eine statische öffentliche URL zugänglich sind (z.B. soziale Netzwerke). Dies kann zum Beispiel mit dem R-Package RSelenium realisiert werden. Auch das sogenannte Web Crawling ist eine spannende weiterführende Methode. Hierbei wird ein Bot programmiert, der ausgehend von einer Startwebseite alle auf einer Website verlinkten Seiten speichert, diese nacheinander Aufruft und wiederum alle dort vorkommenden Hyperlinks speichert. Der Bot bahnt sich so selbst einen Weg durch das Internet und alle für den Datenbedarf relevanten Seiten können dabei gescrapt werden. So funktionieren beispielsweise Programme die E-Mail Adressen für Werbe- und Betrugszwecke von Webseiten sammeln.   
+
+# 7. Quellen
+
+Laflamme, Eric, und Paul Ossenbruggen. 2017. „Effect of time-of-day and day-of-the-week on congestion duration and breakdown: A case study at a bottleneck in Salem, NH“. Journal of Traffic and Transportation Engineering 4.
+
+Mozilla Contributors (2021): HTML-Grundlagen, https://developer.mozilla.org/de/docs/Learn/Getting_started_with_the_web/HTML_basics
+
+Redmon, Joseph, Santosh Divvala, Ross Girshick, und Ali Farhadi. 2016. „You Only Look Once: Unified, Real-Time Object Detection“, http://arxiv.org/abs/1506.02640 (28. Juli 2021).
+
+Robbins, Jennifer Niederst (2012): "Learning Web Design, Forth Edition. A Beginner's Guide to HTML, CSS, JavaScript and Web Graphics. O'Reilly Media.
+Wirth, Niklaus. 1998. Algorithmen und Datenstrukturen. 5. Aufl. Vieweg+Teubner Verlag Wiesbaden.
